@@ -50,6 +50,7 @@ class AidotSwitch(SwitchEntity):
         super().__init__()
         self.device_client: DeviceClient = client.get_device_client(device)
         self._attr_unique_id = self.device_client.info.dev_id
+        self._attr_name = None
 
         manufacturer = self.device_client.info.model_id.split(".")[0]
         model = self.device_client.info.model_id[len(manufacturer) + 1 :]
