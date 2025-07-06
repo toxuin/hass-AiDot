@@ -37,6 +37,7 @@ class PatchedAidotClient(AidotClient):
     """A wrapper for the AidotClient that uses our patched device client."""
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self._device_clients: dict[int, PatchedDeviceClient] = {}
         # Fix for 'AttributeError: 'PatchedAidotClient' object has no attribute '_token_fresh_cb'.'
         self._token_fresh_cb = None
 
