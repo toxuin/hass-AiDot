@@ -167,4 +167,3 @@ class AidotLight(LightEntity):
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the light off."""
         await self.device_client.async_turn_off()
-        await self.lanCtrl.sendDevAttr(self.lanCtrl.getOnOffAction(0))
