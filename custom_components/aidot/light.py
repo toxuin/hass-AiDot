@@ -85,15 +85,6 @@ class AidotLight(LightEntity):
 
         self._attr_supported_color_modes = supported_color_modes
 
-        if ColorMode.RGBW in supported_color_modes:
-            self._attr_color_mode = ColorMode.RGBW
-        elif ColorMode.COLOR_TEMP in supported_color_modes:
-            self._attr_color_mode = ColorMode.COLOR_TEMP
-        elif ColorMode.BRIGHTNESS in supported_color_modes:
-            self._attr_color_mode = ColorMode.BRIGHTNESS
-        else:
-            self._attr_color_mode = ColorMode.ONOFF
-
     async def async_added_to_hass(self) -> None:
         """Run when entity about to be added to hass."""
         await super().async_added_to_hass()
@@ -142,6 +133,21 @@ class AidotLight(LightEntity):
     def max_color_temp_kelvin(self) -> int:
         """Return the coldest color_temp_kelvin that this light supports."""
         return self.device_client.info.cct_max
+
+    @property
+    def color_mode(self):
+        """Return the current color mode."""
+        # If CCT is enabled and set, report COLOR_TEMP
+        if ColorMode.COLOR_TEMP in self._attr_supported_color_modes and self.device_client.status.cct:
+            return ColorMode.COLOR_TEMP
+        # If RGBW is enabled and set, report RGBW
+        if ColorMode.RGBW in self._attr_supported_color_modes and self.device_client.status.rgbw:
+            return ColorMode.RGBW
+        # If brightness is enabled and set, report BRIGHTNESS
+        if ColorMode.BRIGHTNESS in self._attr_supported_color_modes and self.device_client.status.dimming:
+            return ColorMode.BRIGHTNESS
+        # Fallback to ONOFF
+        return ColorMode.ONOFF
 
     @property
     def color_temp_kelvin(self) -> int | None:
