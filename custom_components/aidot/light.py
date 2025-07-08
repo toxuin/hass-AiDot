@@ -73,15 +73,22 @@ class AidotLight(LightEntity):
 
         supported_color_modes = set()
         if self.device_client.info.enable_rgbw:
+            _LOGGER.debug("Adding RGBW")
             supported_color_modes.add(ColorMode.RGBW)
 
         if self.device_client.info.enable_cct:
+            _LOGGER.debug("Adding CCT")
             supported_color_modes.add(ColorMode.COLOR_TEMP)
 
+        if self.device_client.info.enable_dimming and not (
+                self.device_client.info.enable_cct or self.device_client.info.enable_rgbw
+        ):
+            _LOGGER.debug("Adding dimming")
+            supported_color_modes.add(ColorMode.BRIGHTNESS)
+
         if not supported_color_modes:
+            _LOGGER.debug("No color modes supported")
             supported_color_modes.add(ColorMode.ONOFF)
-            if self.device_client.info.enable_dimming:
-                supported_color_modes.add(ColorMode.BRIGHTNESS)
 
         self._attr_supported_color_modes = supported_color_modes
 
@@ -137,17 +144,13 @@ class AidotLight(LightEntity):
     @property
     def color_mode(self):
         """Return the current color mode."""
-        # If CCT is enabled and set, report COLOR_TEMP
-        if ColorMode.COLOR_TEMP in self._attr_supported_color_modes and self.device_client.status.cct:
-            return ColorMode.COLOR_TEMP
-        # If RGBW is enabled and set, report RGBW
-        if ColorMode.RGBW in self._attr_supported_color_modes and self.device_client.status.rgbw:
+        if self.device_client.status.rgbw:
             return ColorMode.RGBW
-        # If brightness is enabled and set, report BRIGHTNESS
-        if ColorMode.BRIGHTNESS in self._attr_supported_color_modes and self.device_client.status.dimming:
+        if self.device_client.status.cct:
+            return ColorMode.COLOR_TEMP
+        if self.device_client.status.dimming:
             return ColorMode.BRIGHTNESS
-        # Fallback to ONOFF
-        return ColorMode.ONOFF
+        return ColorMode.UNKNOWN
 
     @property
     def color_temp_kelvin(self) -> int | None:
