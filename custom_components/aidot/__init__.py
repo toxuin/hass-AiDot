@@ -33,24 +33,23 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data.setdefault(DOMAIN, {})[CONF_LOGIN_INFO] = entry.data[CONF_LOGIN_INFO]
     hass.data.setdefault(DOMAIN, {})[CONF_PRODUCT_LIST] = entry.data[CONF_PRODUCT_LIST]
 
+    devices = entry.data[CONF_DEVICE_LIST]
+    products = entry.data.get(CONF_PRODUCT_LIST, [])
+
+    _LOGGER.debug(f"Devices: {devices}")
+    _LOGGER.debug(f"Products: {products}")
+
+    for product in products:
+        for device in devices:
+            if device["productId"] == product["id"]:
+                device["product"] = product
+
     session = async_get_clientsession(hass)
     client = AidotClient(session, token=entry.data[CONF_LOGIN_INFO])
 
-    try:
-        house_id = entry.data[CONF_SELECTED_HOUSE]["id"]
-        devices = await client.async_get_devices(house_id)
-    except AidotAuthFailed:
-        _LOGGER.error("Authentication failed while setting up entry")
-        return False
-    except KeyError:
-        _LOGGER.error("Failed to get selected_house from config entry")
-        return False
-
-    product_list = entry.data.get(CONF_PRODUCT_LIST, [])
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {
         "client": client,
         "devices": devices,
-        "product_list": product_list,
     }
 
     manual_ips = entry.data.get(CONF_MANUAL_IPS)
@@ -61,9 +60,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             if dev_id in manual_ips:
                 ip_address = manual_ips[dev_id]
                 if ip_address:
-                    _LOGGER.debug(
-                        f"Applying manual IP {ip_address} to device {dev_id}"
-                    )
+                    _LOGGER.debug(f"Applying manual IP {ip_address} to device {dev_id}")
                     device_client = client.get_device_client(device)
                     device_client.update_ip_address(ip_address, manual=True)
 
