@@ -10,13 +10,16 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 import voluptuous as vol
 
 from homeassistant import config_entries
-from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResult
 
 from .const import (
     CLOUD_SERVERS,
     CONF_CHOOSE_HOUSE,
     CONF_MANUAL_IPS,
+    CONF_LOGIN_INFO,
+    CONF_SELECTED_HOUSE,
+    CONF_DEVICE_LIST,
+    CONF_PRODUCT_LIST,
     CONF_PASSWORD,
     CONF_SERVER_COUNTRY,
     CONF_USE_MANUAL_IPS,
@@ -122,7 +125,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 self.selected_house["id"]
             )
             _LOGGER.debug(f"Got devices: {self.device_list}")
-            product_ids = [d["productId"] for d in self.device_list]
+            product_ids = ",".join([d["productId"] for d in self.device_list])
             if product_ids:
                 _LOGGER.debug(
                     f"Getting product info for product ids: {product_ids}"
@@ -170,8 +173,10 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return self.async_create_entry(
                 title=title,
                 data={
-                    "login_info": self.login_info,
-                    "selected_house": self.selected_house,
+                    CONF_LOGIN_INFO: self.login_info,
+                    CONF_SELECTED_HOUSE: self.selected_house,
+                    CONF_DEVICE_LIST: self.device_list, # handy to store all the aes keys and passwords ;)
+                    CONF_PRODUCT_LIST: self.product_list,
                 },
             )
 
@@ -187,8 +192,10 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return self.async_create_entry(
                 title=title,
                 data={
-                    "login_info": self.login_info,
-                    "selected_house": self.selected_house,
+                    CONF_LOGIN_INFO: self.login_info,
+                    CONF_SELECTED_HOUSE: self.selected_house,
+                    CONF_DEVICE_LIST: self.device_list,
+                    CONF_PRODUCT_LIST: self.product_list,
                     CONF_MANUAL_IPS: manual_ips,
                 },
             )

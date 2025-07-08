@@ -51,6 +51,7 @@ class AidotSwitch(SwitchEntity):
         self.device_client: DeviceClient = client.get_device_client(device)
         self._attr_unique_id = self.device_client.info.dev_id
         self._attr_name = None
+        self._update_task = None
 
         manufacturer = self.device_client.info.model_id.split(".")[0]
         model = self.device_client.info.model_id[len(manufacturer) + 1 :]
@@ -68,12 +69,12 @@ class AidotSwitch(SwitchEntity):
         """Run when entity about to be added to hass."""
         await super().async_added_to_hass()
         await self.device_client.async_login()
-        self.update_task = self.hass.loop.create_task(self._async_update_loop())
+        self._update_task = self.hass.loop.create_task(self._async_update_loop())
 
     async def async_will_remove_from_hass(self) -> None:
         """Run when entity will be removed from hass."""
-        if hasattr(self, "update_task"):
-            self.update_task.cancel()
+        if self._update_task:
+            self._update_task.cancel()
         await super().async_will_remove_from_hass()
 
     async def _async_update_loop(self):

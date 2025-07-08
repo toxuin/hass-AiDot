@@ -57,6 +57,7 @@ class AidotLight(LightEntity):
         self.device_client: DeviceClient = client.get_device_client(device)
         self._attr_unique_id = self.device_client.info.dev_id
         self._attr_name = None
+        self._update_task = None
 
         manufacturer = self.device_client.info.model_id.split(".")[0]
         model = self.device_client.info.model_id[len(manufacturer) + 1 :]
@@ -72,37 +73,35 @@ class AidotLight(LightEntity):
 
         supported_color_modes = set()
         if self.device_client.info.enable_rgbw:
+            _LOGGER.debug("Adding RGBW")
             supported_color_modes.add(ColorMode.RGBW)
 
         if self.device_client.info.enable_cct:
+            _LOGGER.debug("Adding CCT")
             supported_color_modes.add(ColorMode.COLOR_TEMP)
 
+        if self.device_client.info.enable_dimming and not (
+                self.device_client.info.enable_cct or self.device_client.info.enable_rgbw
+        ):
+            _LOGGER.debug("Adding dimming")
+            supported_color_modes.add(ColorMode.BRIGHTNESS)
+
         if not supported_color_modes:
+            _LOGGER.debug("No color modes supported")
             supported_color_modes.add(ColorMode.ONOFF)
-            if self.device_client.info.enable_dimming:
-                supported_color_modes.add(ColorMode.BRIGHTNESS)
 
         self._attr_supported_color_modes = supported_color_modes
-
-        if ColorMode.RGBW in supported_color_modes:
-            self._attr_color_mode = ColorMode.RGBW
-        elif ColorMode.COLOR_TEMP in supported_color_modes:
-            self._attr_color_mode = ColorMode.COLOR_TEMP
-        elif ColorMode.BRIGHTNESS in supported_color_modes:
-            self._attr_color_mode = ColorMode.BRIGHTNESS
-        else:
-            self._attr_color_mode = ColorMode.ONOFF
 
     async def async_added_to_hass(self) -> None:
         """Run when entity about to be added to hass."""
         await super().async_added_to_hass()
         await self.device_client.async_login()
-        self.update_task = self.hass.loop.create_task(self._async_update_loop())
+        self._update_task = self.hass.loop.create_task(self._async_update_loop())
 
     async def async_will_remove_from_hass(self) -> None:
         """Run when entity will be removed from hass."""
-        if hasattr(self, "update_task"):
-            self.update_task.cancel()
+        if self._update_task:
+            self._update_task.cancel()
         await super().async_will_remove_from_hass()
 
     async def _async_update_loop(self):
@@ -141,6 +140,17 @@ class AidotLight(LightEntity):
     def max_color_temp_kelvin(self) -> int:
         """Return the coldest color_temp_kelvin that this light supports."""
         return self.device_client.info.cct_max
+
+    @property
+    def color_mode(self):
+        """Return the current color mode."""
+        if self.device_client.status.rgbw:
+            return ColorMode.RGBW
+        if self.device_client.status.cct:
+            return ColorMode.COLOR_TEMP
+        if self.device_client.status.dimming:
+            return ColorMode.BRIGHTNESS
+        return ColorMode.UNKNOWN
 
     @property
     def color_temp_kelvin(self) -> int | None:
