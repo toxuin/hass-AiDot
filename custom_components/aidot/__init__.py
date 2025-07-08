@@ -12,7 +12,14 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from .const import CONF_LOGIN_INFO, CONF_MANUAL_IPS, DOMAIN
+from .const import (
+    CONF_LOGIN_INFO,
+    CONF_DEVICE_LIST,
+    CONF_PRODUCT_LIST,
+    CONF_MANUAL_IPS,
+    DOMAIN,
+    CONF_SELECTED_HOUSE,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -22,11 +29,15 @@ PLATFORMS: list[Platform] = [Platform.LIGHT, Platform.SWITCH]
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up aidot from a config entry."""
 
+    hass.data.setdefault(DOMAIN, {})[CONF_DEVICE_LIST] = entry.data[CONF_DEVICE_LIST]
+    hass.data.setdefault(DOMAIN, {})[CONF_LOGIN_INFO] = entry.data[CONF_LOGIN_INFO]
+    hass.data.setdefault(DOMAIN, {})[CONF_PRODUCT_LIST] = entry.data[CONF_PRODUCT_LIST]
+
     session = async_get_clientsession(hass)
     client = AidotClient(session, token=entry.data[CONF_LOGIN_INFO])
 
     try:
-        house_id = entry.data["selected_house"]["id"]
+        house_id = entry.data[CONF_SELECTED_HOUSE]["id"]
         devices = await client.async_get_devices(house_id)
     except AidotAuthFailed:
         _LOGGER.error("Authentication failed while setting up entry")
@@ -35,9 +46,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         _LOGGER.error("Failed to get selected_house from config entry")
         return False
 
+    product_list = entry.data.get(CONF_PRODUCT_LIST, [])
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {
         "client": client,
         "devices": devices,
+        "product_list": product_list,
     }
 
     manual_ips = entry.data.get(CONF_MANUAL_IPS)
@@ -68,5 +81,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         data = hass.data[DOMAIN].pop(entry.entry_id)
         client: AidotClient = data["client"]
         client.cleanup()
+        hass.data[DOMAIN].pop(CONF_DEVICE_LIST, None)
+        hass.data[DOMAIN].pop(CONF_LOGIN_INFO, None)
+        hass.data[DOMAIN].pop(CONF_PRODUCT_LIST, None)
 
     return unload_ok

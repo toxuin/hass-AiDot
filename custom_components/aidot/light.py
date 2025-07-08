@@ -36,6 +36,15 @@ async def async_setup_entry(
     data = hass.data[DOMAIN][entry.entry_id]
     client: AidotClient = data["client"]
     devices: list[dict[str, Any]] = data["devices"]
+    products = data.get("product_list", [])
+
+    _LOGGER.debug(f"DEVICES: {devices}")
+    _LOGGER.debug(f"PRODUCTS: {products}")
+
+    for product in products:
+        for device in devices:
+            if device["productId"] == product["id"]:
+                device["product"] = product
 
     async_add_entities(
         AidotLight(client, device_info)
